@@ -1,0 +1,80 @@
+  services:
+    service-coupon-service:
+        container_name: coupon-service
+        image: testing_coupon_service:latest
+        build:
+          context: .
+          dockerfile: docker/Dockerfile
+          target: development
+          args:
+            NODE_ENV: dev
+        ports:
+          - 3000:3000
+        env_file:
+          - .env/db.env
+          - .env/redis.env
+        networks:
+          monk_network:
+            ipv4_address: 30.7.1.200
+        volumes:
+          - ./src:/home/dev/coupon-service/src
+          - ./node_modules:/home/dev/coupon-service/node_modules/
+        command: npm run start:debug
+
+    service-redis:
+        image: redis:latest
+        container_name: redis
+        ports:
+          - "6379:6379" # Exposes Redis on localhost:6379
+        networks:
+          monk_network:
+            ipv4_address: 30.7.1.202
+        volumes:
+           - redisdata:/data 
+        command: ["redis-server"]
+        
+    service-postgres:
+      container_name: coupon-postgres
+      image: coupon-postgres
+      build:
+        context: ./db
+      environment:
+        POSTGRES_USER: dev
+        POSTGRES_PASSWORD: dev
+        POSTGRES_DB: coupon
+      ports:
+        - 5432:5432
+      volumes:
+        - ./init-scripts:/docker-entrypoint-initdb.d
+        - pgdata:/var/lib/postgresql/data
+      networks:
+        monk_network:
+          ipv4_address: 30.7.1.201
+
+    service-pgadmin:
+      container_name: coupon-pgadmin
+      image: dpage/pgadmin4
+      environment:
+        PGADMIN_SETUP_EMAIL: admin@admin.com
+        PGADMIN_SETUP_PASSWORD: root
+        PGADMIN_DEFAULT_EMAIL: admin@admin.com
+        PGADMIN_DEFAULT_PASSWORD: root
+        PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+      volumes:
+        - ./local-setup/pgadmin/servers.json:/pgadmin4/servers.json
+      ports:
+        - 5050:80
+      networks:
+        monk_network:
+
+  networks:
+    monk_network:
+      driver: bridge
+      ipam:
+        driver: default
+        config:
+          - subnet: 30.7.0.0/16
+
+  volumes:
+    pgdata:
+    redisdata:
