@@ -27,14 +27,14 @@ CREATE TABLE "coupon_product" (
 
 
 CREATE TABLE "bxgy_mappings" (
-    "id" SERIAL PRIMARY KEY,
-    "coupon_id" INTEGER REFERENCES coupons(id) ON DELETE CASCADE,  
-    "buy_product_ids" INTEGER[] NOT NULL,         
-    "get_product_ids" INTEGER[] NOT NULL,          
-    "buy_quantity" INTEGER NOT NULL,               
-    "get_quantity" INTEGER NOT NULL,              
-    "max_repetition" INTEGER DEFAULT 1,             
-    "created_at" TIMESTAMP DEFAULT NOW(),          
-    "updated_at" TIMESTAMP DEFAULT NOW()            
+  "id" SERIAL PRIMARY KEY,
+  "coupon_id" INTEGER NOT NULL,
+  "buy_products" JSONB NOT NULL,
+  "get_products" JSONB NOT NULL,
+  "repetition_limit" INTEGER DEFAULT 1,
+  "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY ("coupon_id") REFERENCES "coupons"("id")
 );
+
 

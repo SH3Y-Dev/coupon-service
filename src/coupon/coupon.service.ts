@@ -27,8 +27,7 @@ export class CouponService {
       productIds,
       buyProducts,
       getProducts,
-      buyQuantity,
-      getQuantity,
+      repetitionLimit, // Use repetitionLimit instead of buyQuantity/getQuantity
     } = createCouponPayload;
 
     const coupon: any = this.couponsRepository.create({
@@ -47,16 +46,14 @@ export class CouponService {
         coupon['id'],
         buyProducts,
         getProducts,
-        createCouponPayload.repetition_limit,
-        buyQuantity,
-        getQuantity,
+        repetitionLimit, // Use repetitionLimit directly here
       );
     }
 
     return coupon;
   }
 
-  // Associate products with a coupon (for product-wise coupon)
+  //  product-wise coupon
   async addProductsToCoupon(
     couponId: number,
     productIds: number[],
@@ -90,25 +87,21 @@ export class CouponService {
   // Add BxGy mappings
   async addBxgyMappings(
     couponId: number,
-    buyProducts: any[],
-    getProducts: any[],
+    buyProducts: { productId: number; quantity: number }[],
+    getProducts: { productId: number; quantity: number }[],
     repetitionLimit: number,
-    buyQuantity: number,
-    getQuantity: number,
   ): Promise<void> {
     const bxgyMapping = this.bxgyMappingRepository.create({
-      coupons: { id: couponId }, // Set the coupon using its id
-      buyProductIds: buyProducts.map((bp) => bp.productId),
-      getProductIds: getProducts.map((gp) => gp.productId),
-      buyQuantity: buyQuantity, // You can update this logic based on the actual input
-      getQuantity: getQuantity, // You can update this logic based on the actual input
-      maxRepetition: repetitionLimit,
+      coupons: { id: couponId },
+      buyProducts: buyProducts, // Ensure buyProducts array is passed correctly
+      getProducts: getProducts, // Ensure getProducts array is passed correctly
+      repetitionLimit: repetitionLimit, // Store the repetition limit as it is
     });
 
     await this.bxgyMappingRepository.save(bxgyMapping);
   }
 
-  // 2. Retrieve all coupons
+  // Retrieve all coupons
   async getAllCoupons() {
     try {
       const currentDate = new Date(); // Get the current date
@@ -124,7 +117,7 @@ export class CouponService {
     }
   }
 
-  // 3. Retrieve a specific coupon by ID
+  // Retrieve a specific coupon by ID
   async findOne(id: number): Promise<Coupons> {
     const coupon = await this.couponsRepository.findOne({
       where: { id },
@@ -140,18 +133,14 @@ export class CouponService {
 
   // Get applicable all coupons fir cart
   async getAllApplicableCoupons(cartItems: any) {
-    console.log(JSON.stringify(cartItems.cart, null, 4));
-
     const totalCartValue = cartItems.cart.items.reduce(
       (acc, item) => acc + item.quantity * item.price,
       0,
     );
-
     const applicableCoupons = [];
 
     // Fetch all valid coupons (cart-wise, product-wise, bxgy)
     const coupons = await this.getAllCoupons();
-    console.log('coupons', coupons);
 
     for (const coupon of coupons) {
       // 1. Cart-wise Coupons
@@ -172,19 +161,19 @@ export class CouponService {
         const couponProducts = await this.couponProductRepository.find({
           where: { coupons: { id: coupon.id } },
         });
-        console.log('PW', couponProducts);
 
         let discount = 0;
-        const applicableProductIds = []; // Array to hold applicable product IDs
+        const applicableProductIds = [];
 
         for (const couponProduct of couponProducts) {
+
           const cartItem = cartItems.cart.items.find(
             (item) => item.productId === couponProduct.product.id,
           );
 
           if (cartItem) {
             discount += coupon.discountValue * cartItem.quantity;
-            applicableProductIds.push(cartItem.productId); // Add the product ID to the array
+            applicableProductIds.push(cartItem.productId);
           }
         }
 
@@ -193,7 +182,7 @@ export class CouponService {
             couponId: coupon.id,
             type: coupon.type,
             discount,
-            applicableProductIds, // Add applicable product IDs to the response
+            applicableProductIds,
           });
         }
       }
@@ -205,19 +194,54 @@ export class CouponService {
         });
 
         let totalDiscount = 0;
+        const repetitionCount = bxgyMapping.repetitionLimit;
 
-        // Loop through the cart items to calculate BxGy discount
-        for (const cartItem of cartItems.cart.items) {
-          if (bxgyMapping.buyProductIds.includes(cartItem.productId)) {
-            const productQuantity = cartItem.quantity;
-            if (productQuantity >= bxgyMapping.buyQuantity) {
-              const freeProducts =
-                Math.floor(productQuantity / bxgyMapping.buyQuantity) *
-                bxgyMapping.getQuantity;
-
-              const productPrice = cartItem.price;
-              totalDiscount += freeProducts * productPrice;
+        // Calculate how many total 'buy' products are available in the cart across both product a and product b
+        const totalBuyProductCount = bxgyMapping.buyProducts.reduce(
+          (totalCount, buyProduct) => {
+            const cartItem = cartItems.cart.items.find(
+              (item) => item.productId === buyProduct.productId,
+            );
+            if (cartItem) {
+              return (
+                totalCount + Math.floor(cartItem.quantity / buyProduct.quantity)
+              );
             }
+            return totalCount;
+          },
+          0,
+        );
+
+        // Calculate how many free products we can get based on the buy products
+        const totalFreeProducts =
+          totalBuyProductCount *
+          bxgyMapping.getProducts.reduce((totalFree, getProduct) => {
+            const cartItem = cartItems.cart.items.find(
+              (item) => item.productId === getProduct.productId,
+            );
+            if (cartItem) {
+              const freeQuantity = Math.min(
+                totalBuyProductCount * getProduct.quantity,
+                cartItem.quantity,
+              );
+              return totalFree + freeQuantity;
+            }
+            return totalFree;
+          }, 0);
+
+        // Limit the free prodcts to the repetition count
+        const limitedFreeProducts = Math.min(
+          repetitionCount,
+          totalFreeProducts,
+        );
+
+        // calculating the total discount based on the limited free products
+        for (const getProduct of bxgyMapping.getProducts) {
+          const cartItem = cartItems.cart.items.find(
+            (item) => item.productId === getProduct.productId,
+          );
+          if (cartItem) {
+            totalDiscount += limitedFreeProducts * cartItem.price;
           }
         }
 
@@ -234,46 +258,92 @@ export class CouponService {
     return applicableCoupons;
   }
 
-  // 4. Update a specific coupon
-  //   async updateCoupon(id: number, updateCouponDto: any): Promise<Coupon> {
-  //     const coupon = await this.couponRepository.findOneBy({ id });
-  //     if (!coupon) {
-  //       throw new NotFoundException(`Coupon with ID ${id} not found`);
-  //     }
+  // Get a specific coupon by its ID
+  async getCouponById(id: number): Promise<Coupons | null> {
+    return await this.couponsRepository.findOne({ where: { id } });
+  }
 
-  //     Object.assign(coupon, updateCouponDto);
-  //     await this.couponRepository.save(coupon);
+  // Update a specific coupon by its ID
+  async updateCoupon(id: number, updatePayload: any): Promise<Coupons | null> {
+    const coupon = await this.couponsRepository.findOne({ where: { id } });
+    if (!coupon) {
+      throw new NotFoundException('Coupon not found');
+    }
 
-  //     // Handle updated product-wise coupons or bxgy mappings if necessary
-  //     if (updateCouponDto.product_ids) {
-  //       await this.addProductsToCoupon(id, updateCouponDto.product_ids);
-  //     }
+    // Update coupon details
+    Object.assign(coupon, updatePayload);
+    await this.couponsRepository.save(coupon);
 
-  //     if (updateCouponDto.buy_products && updateCouponDto.get_products) {
-  //       await this.addBxgyMappings(
-  //         id,
-  //         updateCouponDto.buy_products,
-  //         updateCouponDto.get_products,
-  //         updateCouponDto.repetition_limit,
-  //       );
-  //     }
+    // Handle product-wise coupon
+    if (
+      updatePayload.type === 'product-wise' &&
+      updatePayload.productIds &&
+      updatePayload.productIds.length
+    ) {
+      // Step 1: Remove old product associations from coupon_product table // can be improved {dangerous to delete can use transactrions}
+      await this.couponProductRepository.delete({
+        coupons: { id: coupon.id },
+      });
 
-  //     return coupon;
-  //   }
+      // Step 2: Add new products to the coupon
+      await this.addProductToCoupon(coupon.id, updatePayload.productIds);
+    }
 
-  // 5. Delete a coupon
-  //   async deleteCoupon(id: number): Promise<void> {
-  //     const coupon = await this.couponRepository.findOneBy({ id });
-  //     if (!coupon) {
-  //       throw new NotFoundException(`Coupon with ID ${id} not found`);
-  //     }
+    // add or update bxgy mappings
+    if (
+      updatePayload.type === 'bxgy' &&
+      updatePayload.buyProducts &&
+      updatePayload.getProducts
+    ) {
+      await this.addBxgyMappings(
+        coupon.id,
+        updatePayload.buyProducts,
+        updatePayload.getProducts,
+        updatePayload.repetitionLimit,
+      );
+    }
 
-  //     await this.couponRepository.remove(coupon);
-  //   }
+    return coupon;
+  }
 
-  // 7. Apply a coupon to the cart
-  async applyCouponToCart(couponId: number, cart: any): Promise<any> {
-    // Apply the selected coupon to the cart and return updated cart with discounted prices
-    // Handle different coupon types and their corresponding logic for applying discounts
+  // Delete a specific coupon by its ID
+  async deleteCoupon(id: number): Promise<boolean> {
+    const coupon = await this.couponsRepository.findOne({ where: { id } });
+    if (!coupon) {
+      throw new NotFoundException('Coupon not found');
+    }
+
+    await this.couponsRepository.remove(coupon);
+    return true;
+  }
+
+  async addProductToCoupon(
+    couponId: number,
+    productIds: number[],
+  ): Promise<void> {
+    const products = await this.productRepository.findBy({
+      id: In(productIds),
+    });
+
+    if (products.length !== productIds.length) {
+      throw new NotFoundException('Some products not found');
+    }
+
+    const coupon = await this.couponsRepository.findOne({
+      where: { id: couponId },
+    });
+
+    if (!coupon) {
+      throw new NotFoundException('Coupon not found');
+    }
+
+    const couponProducts = products.map((product) => {
+      const couponProduct = new CouponProduct();
+      couponProduct.coupons = coupon;
+      couponProduct.product = product;
+      return couponProduct;
+    });
+
+    await this.couponProductRepository.save(couponProducts);
   }
 }

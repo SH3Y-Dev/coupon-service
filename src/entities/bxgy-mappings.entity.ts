@@ -15,23 +15,23 @@ export class BxgyMapping {
   id: number;
 
   @ManyToOne(() => Coupons, { eager: true })
-    @JoinColumn({ name: 'coupon_id', referencedColumnName: 'id' })
-    coupons: Coupons;
+  @JoinColumn({ name: 'coupon_id', referencedColumnName: 'id' })
+  coupons: Coupons;
 
-  @Column('int', { array: true, name: 'buy_product_ids' })
-  buyProductIds: number[];
+  @Column('jsonb', { name: 'buy_products' })
+  buyProducts: {
+    productId: number;
+    quantity: number;
+  }[];
 
-  @Column('int', { array: true, name: 'get_product_ids' })
-  getProductIds: number[];
+  @Column('jsonb', { name: 'get_products' })
+  getProducts: {
+    productId: number;
+    quantity: number;
+  }[];
 
-  @Column('int', { name: 'buy_quantity' })
-  buyQuantity: number;
-
-  @Column('int', { name: 'get_quantity' })
-  getQuantity: number;
-
-  @Column('int', { name: 'max_repetition', default: 1 })
-  maxRepetition: number;
+  @Column('int', { name: 'repetition_limit', default: 1 })
+  repetitionLimit: number;
 
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt: Date;

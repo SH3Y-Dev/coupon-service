@@ -1,99 +1,161 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+Here’s the updated `README.md` including the improvements section at the end:
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+```markdown
+# Coupon Management API's
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+I have implemented Cart-Wise, Product-Wise, and Buy-X-Get-Y coupons. You can create, update, retrieve, and delete coupons, as well as apply them to carts with products to determine all applicable coupons.
 
-## Description
+## API Endpoints
+URL : http://localhost:3000/{below_mentioned_routes}
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### 2. **Create Coupon**
+- **Endpoint:**  `POST /coupons`
+- **Description:** Create a new coupon.
 
-## Project setup
-
-```bash
-$ npm install
+#### Example Payload:
+```json
+{
+  "code": "CART10OFF",
+  "type": "cart-wise",
+  "discountValue": 10.00,
+  "minCartValue": 50.00,
+  "expirationDate": "2025-02-28T23:59:59Z"
+}
 ```
 
-## Compile and run the project
+### 2. **Update Coupon**
+- **Endpoint:** `PUT /coupons/{id}`
+- **Description:** Update an existing coupon by its ID.
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+#### Example Payload:
+```json
+{
+  "code": "PRODUCT100OFF",
+  "type": "product-wise",
+  "discountValue": 25.00,
+  "expirationDate": "2025-02-28T23:59:59Z",
+  "productIds": [1, 2, 3]
+}
 ```
 
-## Run tests
+### 3. **Get Coupon by ID**
+- **Endpoint:** `GET /coupons/{id}`
+- **Description:** Retrieve a coupon by its ID.
 
-```bash
-# unit tests
-$ npm run test
+### 4. **Delete Coupon**
+- **Endpoint:** `DELETE /coupons/{id}`
+- **Description:** Delete a coupon by its ID.
 
-# e2e tests
-$ npm run test:e2e
+### 5. **Get Applicable Coupons**
+- **Endpoint:** `POST /coupons/applicable`
+- **Description:** Retrieve all applicable coupons for a given cart.
 
-# test coverage
-$ npm run test:cov
+#### Example Payload:
+```json
+{
+  "cart": {
+    "items": [
+      { "product_id": 1, "quantity": 6, "price": 50 },
+      { "product_id": 2, "quantity": 3, "price": 30 },
+      { "product_id": 3, "quantity": 2, "price": 25 }
+    ]
+  }
+}
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g mau
-$ mau deploy
+#### Example Response:
+```json
+[
+  {"couponId":59,"type":"bxgy","discount":50},
+  {"couponId":61,"type":"cart-wise","discount":44},
+  {"couponId":60,"type":"product-wise","discount":275,"applicableProductIds":[1,2,3]}
+]
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## Handling Coupon Updates
 
-Check out a few resources that may come in handy when working with NestJS:
+- When updating a product-wise coupon, the old product associations are deleted first to avoid incorrect mappings.
+- For BXGY coupons, any changes to the `buyProducts` or `getProducts` should also be handled by deleting old mappings before adding new ones.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+---
 
-## Support
+## Example Coupon Scenarios
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### 1. **Cart-Wise Coupon Example**
+A cart-wise coupon applies when the total value of the cart meets the minimum value (`minCartValue`). For example:
 
-## Stay in touch
+```json
+{
+  "code": "CART10OFF",
+  "type": "cart-wise",
+  "discountValue": 10.00,
+  "minCartValue": 50.00,
+  "expirationDate": "2025-02-28T23:59:59Z"
+}
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### 2. **Product-Wise Coupon Example**
+A product-wise coupon applies only to specific products in the cart:
 
-## License
+```json
+{
+  "code": "PRODUCT110OFF",
+  "type": "product-wise",
+  "discountValue": 15.00,
+  "expirationDate": "2025-02-28T23:59:59Z",
+  "productIds": [1, 2, 3]
+}
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### 3. **Buy-X-Get-Y Coupon Example**
+A Buy-X-Get-Y coupon applies when a customer buys a certain quantity of products and gets other products for free:
+
+```json
+{
+  "code": "BXGY123",
+  "type": "bxgy",
+  "expirationDate": "2025-12-31T23:59:59Z",
+  "buyProducts": [
+    {
+      "productId": 1,
+      "quantity": 3
+    },
+    {
+      "productId": 2,
+      "quantity": 3
+    }
+  ],
+  "getProducts": [
+    {
+      "productId": 3,
+      "quantity": 1
+    }
+  ],
+  "repetitionLimit": 2
+}
+```
+
+For every 3 products of X or Y bought, the customer will receive 1 free product Z (up to 2 times).
+
+---
+
+## Improvements to Consider
+
+### 1. **Flag Instead of Deleting Coupons**
+   - Instead of physically deleting coupons, a **soft delete** approach can be implemented by adding a `deleted` flag to the coupon. This way, the coupon is marked as deleted but not physically removed from the database, allowing you to keep track of its history.
+
+### 2. **Track Changes During Updates**
+   - When updating a coupon, a flag like `isUpdated` or `isModified` can be used to track whether the coupon has been modified. This ensures we keep a record of what was changed before and after the update, which can be useful for **Analytics** purposes.
+
+
+### 3. **Caching Coupons in Redis**
+   - To improve performance and reduce database load, a **Redis cache** can be introduced to store coupons. By caching coupon data, during read operations, you can minimize repeated database queries and enhance response times. (We can cache during the time of read or write)
+
+   **Example:**
+   - Coupons could be cached in Redis with keys like `coupon_{id}` or `all_coupons`.
+ 
+
+
+--- 

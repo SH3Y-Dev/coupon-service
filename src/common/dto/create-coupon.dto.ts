@@ -23,7 +23,6 @@ export const CreateCouponSchema = z.object({
   buyProducts: z.array(BuyProductSchema).optional(),
   getProducts: z.array(GetProductSchema).optional(),
   repetitionLimit: z.number().int().min(1).optional(),
-  buyQuantity: z.number().optional(),
-  getQuantity: z.number().optional(),
 });
+
 export class CreateCouponDTO extends createZodDto(CreateCouponSchema) {}
