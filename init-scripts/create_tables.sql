@@ -4,7 +4,7 @@ CREATE TABLE "coupons" (
     "id" SERIAL PRIMARY KEY,
     "code" VARCHAR(50) UNIQUE NOT NULL,              
     "type" coupon_type NOT NULL,                     
-    "discount_value" NUMERIC(10, 2) NOT NULL,       
+    "discount_value" NUMERIC(10, 2),       
     "min_cart_value" NUMERIC(10, 2),                
     "expiration_date" TIMESTAMP NOT NULL,           
     "created_at" TIMESTAMP DEFAULT NOW(),            
